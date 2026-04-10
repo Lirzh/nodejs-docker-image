@@ -23,10 +23,12 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set lower case repository name
+      run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: ./riscv64
         push: true
         platforms: linux/riscv64
-        tags: ghcr.io/${{ github.repository }}:riscv64
+        tags: ghcr.io/${{ env.REPO }}:riscv64
