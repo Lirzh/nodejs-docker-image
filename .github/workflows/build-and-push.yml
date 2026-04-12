@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -36,6 +36,16 @@ jobs:
         push: true
         platforms: linux/riscv64
         tags: ghcr.io/${{ env.REPO }}:riscv64
+    - name: Get Node.js version for riscv64
+      id: node-version-riscv64
+      run: |
+        NODE_VERSION=$(docker run --rm --platform linux/riscv64 ghcr.io/${{ env.REPO }}:riscv64 node --version)
+        NPM_VERSION=$(docker run --rm --platform linux/riscv64 ghcr.io/${{ env.REPO }}:riscv64 npm --version)
+        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+        echo "=== riscv64 Architecture ==="
+        echo "Node.js: $NODE_VERSION"
+        echo "npm: $NPM_VERSION"
 
   build-mips64le:
     runs-on: ubuntu-latest
@@ -61,3 +71,129 @@ jobs:
         push: true
         platforms: linux/mips64le
         tags: ghcr.io/${{ env.REPO }}:mips64le
+    - name: Get Node.js version for mips64le
+      id: node-version-mips64le
+      run: |
+        NODE_VERSION=$(docker run --rm --platform linux/mips64le ghcr.io/${{ env.REPO }}:mips64le node --version)
+        NPM_VERSION=$(docker run --rm --platform linux/mips64le ghcr.io/${{ env.REPO }}:mips64le npm --version)
+        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+        echo "=== mips64le Architecture ==="
+        echo "Node.js: $NODE_VERSION"
+        echo "npm: $NPM_VERSION"
+
+  build-386:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set lower case repository name
+      run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+    - name: Build and push 386
+      uses: docker/build-push-action@v5
+      with:
+        context: ./386
+        push: true
+        platforms: linux/386
+        tags: ghcr.io/${{ env.REPO }}:386
+    - name: Get Node.js version for 386
+      id: node-version-386
+      run: |
+        NODE_VERSION=$(docker run --rm --platform linux/386 ghcr.io/${{ env.REPO }}:386 node --version)
+        NPM_VERSION=$(docker run --rm --platform linux/386 ghcr.io/${{ env.REPO }}:386 npm --version)
+        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+        echo "=== 386 Architecture ==="
+        echo "Node.js: $NODE_VERSION"
+        echo "npm: $NPM_VERSION"
+
+  build-loong64:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set lower case repository name
+      run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+    - name: Build and push loong64
+      uses: docker/build-push-action@v5
+      with:
+        context: ./loong64
+        push: true
+        platforms: linux/loong64
+        tags: ghcr.io/${{ env.REPO }}:loong64
+    - name: Get Node.js version for loong64
+      id: node-version-loong64
+      run: |
+        NODE_VERSION=$(docker run --rm --platform linux/loong64 ghcr.io/${{ env.REPO }}:loong64 node --version)
+        NPM_VERSION=$(docker run --rm --platform linux/loong64 ghcr.io/${{ env.REPO }}:loong64 npm --version)
+        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "npm_version=$NPM_VERSION" >> $GITHUB_OUTPUT
+        echo "=== loong64 Architecture ==="
+        echo "Node.js: $NODE_VERSION"
+        echo "npm: $NPM_VERSION"
+
+  update-readme:
+    needs: [build-riscv64, build-mips64le, build-386, build-loong64]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Update README with Node.js versions
+      run: |
+        cat > README.md << 'EOF'
+# nodejs-docker-image
+自用的nodejs的docker多架构镜像
+
+## 支持的架构及 Node.js 版本
+
+| 架构 | Docker 标签 | Node.js 版本 | npm 版本 |
+|------|------------|-------------|----------|
+| RISC-V 64-bit | `riscv64` | ${{ needs.build-riscv64.outputs.node_version }} | ${{ needs.build-riscv64.outputs.npm_version }} |
+| MIPS64 Little Endian | `mips64le` | ${{ needs.build-mips64le.outputs.node_version }} | ${{ needs.build-mips64le.outputs.npm_version }} |
+| x86 (32-bit) | `386` | ${{ needs.build-386.outputs.node_version }} | ${{ needs.build-386.outputs.npm_version }} |
+| LoongArch 64-bit | `loong64` | ${{ needs.build-loong64.outputs.node_version }} | ${{ needs.build-loong64.outputs.npm_version }} |
+
+## 使用方法
+
+```bash
+# 拉取特定架构的镜像
+docker pull ghcr.io/ptyz/nodejs-docker-image:riscv64
+docker pull ghcr.io/ptyz/nodejs-docker-image:mips64le
+docker pull ghcr.io/ptyz/nodejs-docker-image:386
+docker pull ghcr.io/ptyz/nodejs-docker-image:loong64
+```
+
+## CI/CD
+
+本项目使用 GitHub Actions 自动构建和推送多架构镜像到 GitHub Container Registry (GHCR)。每次推送到 main 分支时，所有架构的镜像都会自动构建并发布，并更新 README 中的版本信息。
+
+*最后更新时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*
+EOF
+    - name: Commit and push README changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md
+        git diff --staged --quiet || git commit -m "Update README with latest Node.js versions [skip ci]"
+        git push
