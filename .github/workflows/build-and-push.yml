@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
   packages: write
 
 jobs:
@@ -112,48 +111,3 @@ jobs:
         platforms: linux/loong64
         tags: ghcr.io/${{ env.REPO }}:loong64
 
-  update-readme:
-    needs: [build-riscv64, build-mips64le, build-386, build-loong64]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Update README with architectures
-      run: |
-        cat > README.md << 'EOF'
-# nodejs-docker-image
-自用的nodejs的docker多架构镜像
-
-## 支持的架构
-
-| 架构 | Docker 标签 |
-|------|------------|
-| RISC-V 64-bit | `riscv64` |
-| MIPS64 Little Endian | `mips64le` |
-| x86 (32-bit) | `386` |
-| LoongArch 64-bit | `loong64` |
-
-## 使用方法
-
-```bash
-# 拉取特定架构的镜像
-docker pull ghcr.io/ptyz/nodejs-docker-image:riscv64
-docker pull ghcr.io/ptyz/nodejs-docker-image:mips64le
-docker pull ghcr.io/ptyz/nodejs-docker-image:386
-docker pull ghcr.io/ptyz/nodejs-docker-image:loong64
-```
-
-## CI/CD
-
-本项目使用 GitHub Actions 自动构建和推送多架构镜像到 GitHub Container Registry (GHCR)。每次推送到 main 分支时,所有架构的镜像都会自动构建并发布。
-
-*最后更新时间: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*
-EOF
-    - name: Commit and push README changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add README.md
-        git diff --staged --quiet || git commit -m "Update README [skip ci]"
-        git push
