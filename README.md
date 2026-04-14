@@ -8,3 +8,4 @@ mips64le: Node.js version: v18.20.4
           npm version: 9.2.0
 i386:     Node.js version: v20.19.2
           npm version: 9.2.0
+loong64:
